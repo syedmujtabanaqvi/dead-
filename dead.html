@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DEAD DIMENSION — TAPNSTREAM</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@300;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#030705;--fg:#c3d1c6;--red:#d6101a;--mute:#6f857a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-family:Oswald,sans-serif;min-height:100vh;overflow-x:hidden;position:relative;cursor:pointer}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 50% 35%,#16301f 0,transparent 65%),radial-gradient(circle at center,transparent 40%,#000 100%);z-index:0;pointer-events:none}
+#particles{position:fixed;inset:0;z-index:1;pointer-events:none}
+.wrapper{position:relative;z-index:3;max-width:480px;margin:0 auto;text-align:center;padding:24px 20px 100px}
+.brand{font-size:.75rem;letter-spacing:.3em;color:#e3ece5;font-weight:300;margin-bottom:20px;display:flex;align-items:center;justify-content:center;gap:8px}
+.brand i{width:14px;height:14px;border:2px solid #e3ece5;border-radius:2px;display:inline-block;position:relative}
+.brand i::after{content:"";position:absolute;left:2px;top:1px;border-left:6px solid #e3ece5;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent}
+.poster{height:240px;background:url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop') center/cover no-repeat;border-radius:4px;margin-bottom:20px;filter:saturate(.7) brightness(.8);box-shadow:0 0 30px rgba(0,0,0,.8)}
+h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(3.5rem,18vw,6rem);color:var(--red);line-height:.85;letter-spacing:.02em;text-shadow:0 2px 0 #4a0508,0 0 20px rgba(214,16,26,.4);margin-bottom:4px}
+h1 span{display:block;font-size:.75em;color:#fff}
+.status{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:.15em;color:#fff;margin-top:6px}
+.prompt-hint{font-size:.75rem;letter-spacing:.15em;color:var(--mute);margin-top:16px;text-transform:uppercase;animation:pulse 1.5s infinite alternate}
+@keyframes pulse{to{opacity:.4}}
+.player-box{background:rgba(4,10,7,.9);border:1px solid #1d3326;padding:24px;border-radius:6px;box-shadow:0 0 30px #000;margin-top:24px;display:none}
+.player-box.visible{display:block}
+.visualizer{display:flex;gap:4px;align-items:center;justify-content:center;height:50px;margin-bottom:14px}
+.visualizer span{width:4px;background:var(--red);height:6px;border-radius:2px}
+.player-box.playing .visualizer span{animation:eq .8s ease-in-out infinite alternate}
+@keyframes eq{to{height:45px}}
+.visualizer span:nth-child(2n){animation-delay:-.2s}
+.visualizer span:nth-child(3n){animation-delay:-.4s}
+.title-track{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.12em;color:#fff;margin-bottom:12px}
+.progress-container{background:#12231a;height:5px;border-radius:3px;cursor:pointer;position:relative;margin-bottom:6px}
+.progress-bar{background:var(--red);height:100%;width:0%;border-radius:3px;box-shadow:0 0 8px var(--red)}
+.time-info{display:flex;justify-content:space-between;font-size:.75rem;color:var(--mute)}
+</style>
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+
+<div class="wrapper">
+  <div class="brand"><i></i>TAPNSTREAM</div>
+  <div class="poster"></div>
+  <h1>DEAD<span>DIMENSION</span></h1>
+  <div class="status">COMING SOON</div>
+  <div class="prompt-hint" id="hint">[ TAP ANYWHERE TO START AUDIO ]</div>
+
+  <div class="player-box" id="playerCard">
+    <div class="visualizer" id="viz"></div>
+    <div class="title-track">OFFICIAL AUDIO SOUNDTRACK</div>
+    <div class="progress-container" id="progressBar">
+      <div class="progress-bar" id="progressFill"></div>
+    </div>
+    <div class="time-info">
+      <span id="currentTime">0:00</span>
+      <span id="totalDuration">0:00</span>
+    </div>
+  </div>
+</div>
+
+<audio id="mainAudio" preload="auto" playsinline loop></audio>
+
+<script>
+// ====== APNI AUDIO KA LINK YAHAN DAALEIN ======
+const AUDIO_LINK = "https://res.cloudinary.com/ddviuaaca/video/upload/v1791629715/Sequence_09_1_f3a7po.mp4";
+// ==============================================
+
+const canvas = document.getElementById("particles");
+const ctx = canvas.getContext("2d");
+const audio = document.getElementById("mainAudio");
+const hintEl = document.getElementById("hint");
+const playerCard = document.getElementById("playerCard");
+const progressBar = document.getElementById("progressBar");
+const progressFill = document.getElementById("progressFill");
+const currentTimeEl = document.getElementById("currentTime");
+const totalDurationEl = document.getElementById("totalDuration");
+const vizContainer = document.getElementById("viz");
+
+// Create visualizer lines
+for(let i=0; i<24; i++){
+  vizContainer.appendChild(document.createElement("span"));
+}
+
+// Background Particles Setup
+let particles = [];
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+for(let i=0; i<45; i++){
+  particles.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 1.5 + 0.5,
+    speed: Math.random() * 0.3 + 0.1
+  });
+}
+
+function renderParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "rgba(170, 200, 180, 0.15)";
+  for(let p of particles){
+    p.y -= p.speed;
+    if(p.y < 0) p.y = canvas.height;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  requestAnimationFrame(renderParticles);
+}
+renderParticles();
+
+// Audio Configuration
+audio.src = AUDIO_LINK;
+
+function formatTime(sec) {
+  if (isNaN(sec)) return "0:00";
+  let m = Math.floor(sec / 60);
+  let s = Math.floor(sec % 60);
+  return m + ":" + (s < 10 ? "0" : "") + s;
+}
+
+let isPlayingStarted = false;
+
+// Screen Tap to Play Trigger
+document.body.addEventListener("click", async (e) => {
+  if (isPlayingStarted) return;
+  if (e.target.closest("#progressBar")) return; // Don't trigger if clicking progress bar directly
+
+  try {
+    await audio.play();
+    isPlayingStarted = true;
+    hintEl.style.display = "none";
+    playerCard.classList.add("visible", "playing");
+  } catch(err) {
+    console.log("Playback prevented:", err);
+  }
+});
+
+audio.addEventListener("loadedmetadata", () => {
+  totalDurationEl.textContent = formatTime(audio.duration);
+});
+
+audio.addEventListener("timeupdate", () => {
+  currentTimeEl.textContent = formatTime(audio.currentTime);
+  if(audio.duration > 0){
+    let pct = (audio.currentTime / audio.duration) * 100;
+    progressFill.style.width = pct + "%";
+  }
+});
+
+// Progress Bar Seeking
+progressBar.addEventListener("click", (e) => {
+  if(!audio.duration) return;
+  const rect = progressBar.getBoundingClientRect();
+  const pos = (e.clientX - rect.left) / rect.width;
+  audio.currentTime = pos * audio.duration;
+});
+</script>
+
+</body>
+</html>
